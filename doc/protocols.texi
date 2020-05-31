@@ -1041,6 +1041,8 @@ Accept packets only from negotiated peer address and port.
 Act as a server, listening for an incoming connection.
 @item prefer_tcp
 Try TCP for RTP transport first, if TCP is available as RTSP RTP transport.
+@item huawei_fix
+Huawei will always return H264 in the DESCRIBE response and this flag will replace it with H265.
 @end table
 
 Default value is @samp{none}.

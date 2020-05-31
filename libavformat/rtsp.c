@@ -93,6 +93,7 @@ const AVOption ff_rtsp_options[] = {
     RTSP_FLAG_OPTS("rtsp_flags", "set RTSP flags"),
     { "listen", "wait for incoming connections", 0, AV_OPT_TYPE_CONST, {.i64 = RTSP_FLAG_LISTEN}, 0, 0, DEC, "rtsp_flags" },
     { "prefer_tcp", "try RTP via TCP first, if available", 0, AV_OPT_TYPE_CONST, {.i64 = RTSP_FLAG_PREFER_TCP}, 0, 0, DEC|ENC, "rtsp_flags" },
+    { "huawei_fix", "Huawei will always return H264 in the DESCRIBE response and this flag will replace it with H265", 0, AV_OPT_TYPE_CONST, {.i64 = RTSP_FLAG_HUAWEI_FIX}, 0, 0, DEC, "rtsp_flags" },
     RTSP_MEDIATYPE_OPTS("allowed_media_types", "set media types to accept from the server"),
     { "min_port", "set minimum local UDP port", OFFSET(rtp_port_min), AV_OPT_TYPE_INT, {.i64 = RTSP_RTP_PORT_MIN}, 0, 65535, DEC|ENC },
     { "max_port", "set maximum local UDP port", OFFSET(rtp_port_max), AV_OPT_TYPE_INT, {.i64 = RTSP_RTP_PORT_MAX}, 0, 65535, DEC|ENC },
@@ -405,7 +406,19 @@ static void sdp_parse_line(AVFormatContext *s, SDPParseState *s1,
 
     av_log(s, AV_LOG_TRACE, "sdp: %c='%s'\n", letter, buf);
 
-    p = buf;
+    if (rt->rtsp_flags & RTSP_FLAG_HUAWEI_FIX) {
+        if (strcmp(buf, "video 0 RTP/AVP 99\0") == 0) {
+            p = "video 0 RTP/AVP 108\0";
+            av_log(s, AV_LOG_TRACE, "sdp: replace with '%s'\n", p);
+        } else if (strcmp(buf, "rtpmap:99 H264/90000\0") == 0) {
+            p = "rtpmap:108 H265/90000\0";
+            av_log(s, AV_LOG_TRACE, "sdp: replace with '%s'\n", p);
+        } else {
+            p = buf;
+        }
+    } else {
+        p = buf;
+    }
     if (s1->skip_media && letter != 'm')
         return;
     switch (letter) {
